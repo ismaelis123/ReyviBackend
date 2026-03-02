@@ -1,14 +1,27 @@
-console.log('fairController.js se cargó correctamente');
-
 const Fair = require('../models/Fair');
+const cloudinary = require('../config/cloudinary');
 
 exports.createFair = async (req, res) => {
   try {
     const { name, location, date, description } = req.body;
 
-    if (!req.files?.length) return res.status(400).json({ msg: 'Sube al menos 1 imagen' });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ msg: 'Sube al menos una imagen' });
+    }
 
-    const imageUrls = req.files.map(f => `/uploads/${f.filename}`);
+    const imageUrls = [];
+
+    for (const file of req.files) {
+      const result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: 'reyvi/ferias' },
+          (error, result) => error ? reject(error) : resolve(result)
+        );
+        uploadStream.end(file.buffer);
+      });
+
+      imageUrls.push(result.secure_url);
+    }
 
     const fair = new Fair({
       name,
@@ -21,8 +34,8 @@ exports.createFair = async (req, res) => {
     await fair.save();
     res.status(201).json(fair);
   } catch (err) {
-    console.error('Error createFair:', err);
-    res.status(500).json({ msg: 'Error creando feria' });
+    console.error('Error subiendo feria a Cloudinary:', err);
+    res.status(500).json({ msg: 'Error al crear feria' });
   }
 };
 
