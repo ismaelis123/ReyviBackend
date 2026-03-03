@@ -11,6 +11,7 @@ const categoryRoutes = require('./routes/categories');
 const productRoutes = require('./routes/products');
 const fairRoutes = require('./routes/fairs');
 const storeRoutes = require('./routes/stores');
+const postRoutes = require('./routes/posts');
 
 const { createInitialAdmin } = require('./controllers/authController');
 
@@ -28,6 +29,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/fairs', fairRoutes);
 app.use('/api/stores', storeRoutes);
+app.use('/api/posts', postRoutes);
 
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
