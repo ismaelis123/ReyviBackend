@@ -1,5 +1,5 @@
 const Product = require('../models/Product');
-const Category = require('../models/Category'); // ← agregamos esto
+const Category = require('../models/Category');
 const cloudinary = require('../config/cloudinary');
 const mongoose = require('mongoose');
 
@@ -13,11 +13,8 @@ const createProduct = async (req, res) => {
 
     let categoryId = category;
 
-    // 1. Si enviaron un nombre nuevo de categoría → créala
     if (newCategoryName && newCategoryName.trim()) {
       const trimmedName = newCategoryName.trim();
-
-      // Evitar duplicados
       let existing = await Category.findOne({ name: trimmedName });
       if (existing) {
         categoryId = existing._id;
@@ -28,12 +25,10 @@ const createProduct = async (req, res) => {
       }
     }
 
-    // 2. Si no hay categoría ni nueva → error
     if (!categoryId) {
       return res.status(400).json({ msg: 'Debes seleccionar una categoría existente o escribir el nombre de una nueva' });
     }
 
-    // 3. Validar que el ID sea válido
     if (!mongoose.Types.ObjectId.isValid(categoryId)) {
       return res.status(400).json({ msg: 'ID de categoría inválido' });
     }
@@ -78,16 +73,41 @@ const getProducts = async (req, res) => {
   }
 };
 
+const getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ msg: 'ID de producto inválido' });
+    }
+
+    const product = await Product.findById(id).populate('category', 'name');
+
+    if (!product) {
+      return res.status(404).json({ msg: 'Producto no encontrado' });
+    }
+
+    res.json(product);
+  } catch (err) {
+    console.error('Error obteniendo producto:', err);
+    res.status(500).json({ msg: 'Error al obtener producto' });
+  }
+};
+
 const updateProduct = async (req, res) => {
   try {
+    const { id } = req.params;
     const { name, description, category, newCategoryName } = req.body;
-    const product = await Product.findById(req.params.id);
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ msg: 'ID de producto inválido' });
+    }
+
+    const product = await Product.findById(id);
     if (!product) return res.status(404).json({ msg: 'Producto no encontrado' });
 
     let categoryId = category || product.category;
 
-    // Si enviaron nueva categoría
     if (newCategoryName && newCategoryName.trim()) {
       const trimmedName = newCategoryName.trim();
       let existing = await Category.findOne({ name: trimmedName });
@@ -104,12 +124,10 @@ const updateProduct = async (req, res) => {
       return res.status(400).json({ msg: 'ID de categoría inválido' });
     }
 
-    // Actualizar campos
     product.name = name || product.name;
     product.description = description !== undefined ? description : product.description;
     product.category = categoryId;
 
-    // Si subieron nuevas imágenes → agregarlas (no reemplazar)
     if (req.files && req.files.length > 0) {
       const newUrls = [];
       for (const file of req.files) {
@@ -136,8 +154,15 @@ const updateProduct = async (req, res) => {
 
 const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ msg: 'ID de producto inválido' });
+    }
+
+    const product = await Product.findByIdAndDelete(id);
     if (!product) return res.status(404).json({ msg: 'Producto no encontrado' });
+
     res.json({ msg: 'Producto eliminado correctamente' });
   } catch (err) {
     console.error('Error eliminando producto:', err);
@@ -148,6 +173,7 @@ const deleteProduct = async (req, res) => {
 module.exports = {
   createProduct,
   getProducts,
+  getProductById,
   updateProduct,
   deleteProduct
 };
